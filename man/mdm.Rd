@@ -17,7 +17,7 @@ the functions \code{\link{eds}}, \code{\link{eds1}}, \code{\link{ed}}, \code{\li
 \usage{
 mdm(formula, data, weights, subset, na.action, MaxNWts,
 maxit = 1000, contrasts = NULL, Hess = FALSE, summ = 0,
-censored = FALSE, model = FALSE, alpha = TRUE, ...)
+censored = FALSE, model = FALSE, alpha = FALSE, ...)
 }
 \arguments{
   \item{formula}{
@@ -96,6 +96,8 @@ A nnet object with additional components:
 \item{AIC}{the AIC for this fit}
 \item{Hessian}{if Hess is true}
 \item{model}{if model is true}
+\item{entropy}{the entropy of the fitted values}
+\item{diversity}{the diversity of the fitted values}
 }
 \references{
 De'ath, G. (2011) \emph{The Multinomial Diversity Model: Linking Shannon Diversity

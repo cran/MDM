@@ -1,7 +1,7 @@
 mdm <-
 function (formula, data, weights, subset, na.action, MaxNWts, maxit = 1000,
 	contrasts = NULL, Hess = FALSE, summ = 0, censored = FALSE, model = FALSE,
-	alpha = TRUE, ...)
+	alpha = FALSE, ...)
 {
 
 ### modified version of multinom from nnet package by B.R.Ripley ###
@@ -123,11 +123,15 @@ function (formula, data, weights, subset, na.action, MaxNWts, maxit = 1000,
                 rang = 0, maxit = maxit, MaxNWts = MaxNWts, ..., PACKAGE="nnet")
         }
         if (alpha) {
-			if (Xr==1) fit$fitted.values  <- matrix(apply(Y, 2, mean), nrow=nrow(Y),
+			if (Xr==1) {
+				if (missing(weights)) fit$fitted.values  <- matrix(apply(Y, 2, mean), nrow=nrow(Y),
 				ncol=ncol(Y), byrow=TRUE, dimnames=dimnames(Y))
+				else fit$fitted.values  <- matrix(apply(Y, 2, weighted.mean, w=weights), nrow=nrow(Y),
+				ncol=ncol(Y), byrow=TRUE, dimnames=dimnames(Y))
+			}
 			else if (Xr==nrow(Y)) fit$fitted.values  <-  Y
-			if (missing(weights)) fit$value <- sum(-fit$fitted.values * log(fit$fitted.values), ..., na.rm = TRUE)
-			else fit$value <- sum(-fit$fitted.values * log(fit$fitted.values) * weights, ..., na.rm = TRUE)
+ 			if (missing(weights)) fit$value <- sum(-fit$fitted.values * log(fit$fitted.values), ..., na.rm = TRUE)
+ 			else fit$value <- sum(-fit$fitted.values * log(fit$fitted.values) * weights, ..., na.rm = TRUE)
  		}
     }
     else {
@@ -152,7 +156,10 @@ function (formula, data, weights, subset, na.action, MaxNWts, maxit = 1000,
     fit$weights <- w
     fit$lev <- lev
     fit$deviance <- 2 * fit$value
-	if (is.matrix(Y)) fit$diversity <- exp(fit$deviance/2/nrow(Y))
+	if (is.matrix(Y)) {
+		fit$entropy <- fit$deviance/2/nrow(Y)
+		fit$diversity <- exp(fit$entropy)
+	}
     fit$rank <- Xr
     edf <- ifelse(length(lev) == 2L, 1, length(lev) - 1) * Xr
     if (is.matrix(Y)) {
