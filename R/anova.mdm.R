@@ -1,40 +1,57 @@
-anova.mdm <- function (object, ...)
+anova.mdm <- function(object, ..., topnote = TRUE, cols = c("df","dev","ent","div")[1:4])
 {
-    dots <- list(...)
-    if (length(dots) == 0)
-        stop("anova is not implemented for a single \"mdm\" object")
-    mlist <- list(object, ...)
-    nt <- length(mlist)
-    dflis <- sapply(mlist, function(x) x$edf)
+    dotargs <- list(...)
+    named <- if (is.null(names(dotargs))) 
+        rep(FALSE, length(dotargs))
+    else (names(dotargs) != "")
+    if (any(named)) 
+        warning("the following arguments to 'anova.mdm' are invalid and dropped: ", 
+            paste(deparse(dotargs[named]), collapse = ", "))
+    dotargs <- dotargs[!named]
+    is.mdm <- unlist(lapply(dotargs, function(x) inherits(x, 
+        "mdm")))
+    dotargs <- dotargs[is.mdm]
+    object <- c(list(object), dotargs)
+    nt <- length(object)
+    dflis <- sapply(object, "[[",'edf')
     s <- order(dflis)
-    dflis <- nrow(object$residuals) * (ncol(object$residuals) - 1) - dflis
-    mlist <- mlist[s]
-    if (any(!sapply(mlist, inherits, "mdm")))
-        stop("not all objects are of class \"mdm\"")
-    ns <- sapply(mlist, function(x) length(x$residuals))
+    dflis <- nrow(object[[1]]$residuals) * (ncol(object[[1]]$residuals) - 1) - dflis
+    object <- object[s]
+    ns <- sapply(object, function(x) length(x$residuals))
     if (any(ns != ns[1L]))
         stop("models were not all fitted to the same size of dataset")
-    rsp <- unique(sapply(mlist, function(x) paste(formula(x)[2L])))
-    mds <- sapply(mlist, function(x) paste(formula(x)[3L]))
-	nr <- nrow(mlist[[1]]$residuals)
+    rsp <- unique(sapply(object, function(x) paste(formula(x)[2L])))
+    mds <- sapply(object, function(x) paste(formula(x)[3L]))
+	nr <- nrow(object[[1]]$residuals)
     dfs <- dflis[s]
-    lls <- sapply(mlist, function(x) deviance(x))
+    lls <- sapply(object, function(x) deviance(x))
     tss <- c("", paste(1L:(nt - 1), 2L:nt, sep = " vs "))
     df <- c(NA, -diff(dfs))
     x2 <- c(NA, -diff(lls))
     pr <- c(NA, 1 - pchisq(x2[-1L], df[-1L]))
-	ent <- lls/2/nr
+	ent <- sapply(object, "[[",'entropy')
     dent <- c(NA, -diff(ent))
     div <- exp(ent)
     ddiv <- exp(dent)
-    out <- data.frame(Model = mds, Resid.df = dfs, Deviance = lls,
-         df = df, ddev = x2, ent = ent, dent = dent, div = div, ddiv = ddiv)
-    names(out) <- c("Model", "Res-DF", "Res-Dev",
-        "   DF", "  Dev","Ent", "Ent-Diff","Div", "Div-Ratio")
-	rownames(out) <- as.character(sapply(sapply(sapply(mlist,"[[","call"),"[[",2),"[[",3))
+    ins <- !is.na(match(rep(c("df","dev","ent","div"),each=2),cols))
+    variables <- lapply(object, function(x) paste(deparse(formula(x)), 
+        collapse = "\n"))
+    top <- paste("Model ", format(1L:nt), ": ", variables, 
+        sep = "", collapse = "\n")
+    out <- data.frame(Resid.df = dfs, df = df, Deviance = lls,
+         ddev = x2, ent = ent, dent = dent, div = div, ddiv = ddiv)[,ins]
+    names(out) <- c("DF", "DF-Diff", "Dev",
+         "Dev-Diff","Ent", "Ent-Diff","Div", "Div-Ratio")[ins]
+    rownames(out) <- as.character(1:nt)
+    if (!topnote) {
+        rownames(out) <- paste("Model ", format(1L:nt), ": ", variables, 
+        sep = "")
+        attr(out, "heading") <- c("Deviances, Entropies and Diversities of Parametric Diversity Models\n")
+    }    
+    else 
+        attr(out, "heading") <- c("Deviances, Entropies and Diversities of Parametric Diversity Models\n",
+        paste("Response:", rsp,"\n"),paste(top,"\n"))
     class(out) <- c("anova", "data.frame")
-    attr(out, "heading") <- c("Deviances, Entropies and Diversities of Parametric Diversity Models\n",
-        paste("Response:", rsp))
-    out
+    out 
 }
 

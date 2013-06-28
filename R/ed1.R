@@ -6,7 +6,7 @@ function(x, q=1, retq = TRUE) {
 		else if (q==1) sum(-x*log(x),na.rm=TRUE)
 		else sum(x^q)
 	}
-	if (!is.null(dim(x))) a <- apply(x,1,ed1,q=q)
+	if (!is.null(dim(x))) a <- apply(x,1,ed1,q=q,retq=retq)
 	else {
 		x <- matrix(x,nrow=1)
 		rs <- sum(x)
@@ -17,7 +17,7 @@ function(x, q=1, retq = TRUE) {
 			if (q==1) {
 				a <- exp(a)
 			}
-			else if (q!=0) {
+			else if (q!=1) {
 				a <- a^(1/(1-q))
 			}
 		}

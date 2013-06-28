@@ -1,12 +1,28 @@
-mdm <-
-function (formula, data, weights, subset, na.action, MaxNWts, maxit = 1000,
-	contrasts = NULL, Hess = FALSE, summ = 0, censored = FALSE, model = FALSE,
-	alpha = FALSE, ...)
+mdm <- function (formula, data, weights, subset, na.action,
+    MaxNWts, maxit = 1000, contrasts = NULL, Hess = FALSE,
+    censored = FALSE, model = TRUE, use.shortcut = TRUE, ...)
 {
 
-### modified version of multinom from nnet package by B.R.Ripley ###
+# file nnet/multinom.R
+# copyright (C) 1994-2006 W. N. Venables and B. D. Ripley
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 or 3 of the License
+#  (at your option).
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  A copy of the GNU General Public License is available at
+#  http://www.r-project.org/Licenses/
+#
 
-	require(nnet)
+# file MDM/mdm.R
+# mdm is modified version of multinom from nnet package by B.R.Ripley
+# and Bill Venables
 
     class.ind <- function(cl) {
         n <- length(cl)
@@ -15,22 +31,9 @@ function (formula, data, weights, subset, na.action, MaxNWts, maxit = 1000,
         dimnames(x) <- list(names(cl), levels(cl))
         x
     }
-    summ2 <- function(X, Y) {
-        X <- as.matrix(X)
-        Y <- as.matrix(Y)
-        n <- nrow(X)
-        p <- ncol(X)
-        q <- ncol(Y)
-        Z <- t(cbind(X, Y))
-        storage.mode(Z) <- "double"
-        z <- .C(nnet:::VR_summ2, as.integer(n), as.integer(p), as.integer(q),
-            Z = Z, na = integer(1L), ..., PACKAGE="nnet")
-        Za <- t(z$Z[, 1L:z$na, drop = FALSE])
-        list(X = Za[, 1L:p, drop = FALSE], Y = Za[, p + 1L:q])
-    }
     call <- match.call()
     m <- match.call(expand.dots = FALSE)
-    m$MaxNWts <- m$maxit <- m$summ <- m$Hess <- m$contrasts <- m$censored <- m$model <- m$alpha <- m$... <- NULL
+    m$MaxNWts <- m$maxit <- m$summ <- m$Hess <- m$contrasts <- m$censored <- m$q <- m$model <- m$use.shortcut <- m$... <- NULL
     m[[1L]] <- as.name("model.frame")
     m <- eval.parent(m)
     Terms <- attr(m, "terms")
@@ -38,71 +41,22 @@ function (formula, data, weights, subset, na.action, MaxNWts, maxit = 1000,
     cons <- attr(X, "contrasts")
     Xr <- qr(X)$rank
     Y <- model.response(m)
-    if (!is.matrix(Y))
-        Y <- as.factor(Y)
     w <- model.weights(m)
     if (length(w) == 0L)
         if (is.matrix(Y))
             w <- rep(1, dim(Y)[1L])
         else w <- rep(1, length(Y))
-    lev <- levels(Y)
-    if (is.factor(Y)) {
-        counts <- table(Y)
-        if (any(counts == 0L)) {
-            empty <- lev[counts == 0L]
-            warning(sprintf(ngettext(length(empty), "group %s is empty",
-                "groups %s are empty"), paste(sQuote(empty),
-                collapse = " ")), domain = NA)
-            Y <- factor(Y, levels = lev[counts > 0L])
-            lev <- lev[counts > 0L]
-        }
-        if (length(lev) < 2L)
-            stop("need two or more classes to fit a multinom model")
-        if (length(lev) == 2L)
-            Y <- as.vector(unclass(Y)) - 1
-        else Y <- class.ind(Y)
-    }
-    if (summ == 1) {
-        Z <- cbind(X, Y)
-        z1 <- cumprod(apply(Z, 2L, max) + 1)
-        Z1 <- apply(Z, 1L, function(x) sum(z1 * x))
-        oZ <- order(Z1)
-        Z2 <- !duplicated(Z1[oZ])
-        oX <- (seq_along(Z1)[oZ])[Z2]
-        X <- X[oX, , drop = FALSE]
-        Y <- if (is.matrix(Y))
-            Y[oX, , drop = FALSE]
-        else Y[oX]
-        w <- diff(c(0, cumsum(w))[c(Z2, TRUE)])
-        print(dim(X))
-    }
-    if (summ == 2) {
-        Z <- summ2(cbind(X, Y), w)
-        X <- Z$X[, 1L:ncol(X)]
-        Y <- Z$X[, ncol(X) + 1L:ncol(Y), drop = FALSE]
-        w <- Z$Y
-        print(dim(X))
-    }
-    if (summ == 3) {
-        Z <- summ2(X, Y * w)
-        X <- Z$X
-        Y <- Z$Y[, 1L:ncol(Y), drop = FALSE]
-        w <- rep(1, nrow(X))
-        print(dim(X))
-    }
     offset <- model.offset(m)
     r <- ncol(X)
     if (is.matrix(Y)) {
-		alpha <-  alpha & ((Xr==1)|(Xr==nrow(X)))
+		use.shortcut <-  use.shortcut & ((Xr==1)|(Xr==nrow(X)))
 		p <- ncol(Y)
         sY <- Y %*% rep(1, p)
         if (any(sY == 0))
             stop("some case has no observations")
-        if (!censored) {
-            Y <- Y/matrix(sY, nrow(Y), p)
-            w <- w * sY
-        }
-		if (alpha) maxit <- 0
+        Y <- Y/matrix(sY, nrow(Y), p)
+        w <- w * sY
+		if (use.shortcut) maxit <- 0
 		if (missing(MaxNWts)) MaxNWts <- (r + 1) * p
         if (length(offset) > 1L) {
             if (ncol(offset) != p)
@@ -112,26 +66,26 @@ function (formula, data, weights, subset, na.action, MaxNWts, maxit = 1000,
             X <- cbind(X, offset)
             Wts <- as.vector(rbind(matrix(0, r + 1L, p), diag(p)))
             fit <- nnet.default(X, Y, w, Wts = Wts, mask = mask,
-                size = 0, skip = TRUE, softmax = TRUE, censored = censored,
+                size = 0, skip = TRUE, softmax = TRUE, censored = FALSE,
                 rang = 0, maxit = maxit, MaxNWts = MaxNWts, ..., PACKAGE="nnet")
         }
         else {
             mask <- c(rep(FALSE, r + 1L), rep(c(FALSE, rep(TRUE,
                 r)), p - 1L))
             fit <- nnet.default(X, Y, w, mask = mask, size = 0,
-                skip = TRUE, softmax = TRUE, censored = censored,
+                skip = TRUE, softmax = TRUE, censored = FALSE,
                 rang = 0, maxit = maxit, MaxNWts = MaxNWts, ..., PACKAGE="nnet")
         }
-        if (alpha) {
-			if (Xr==1) {
+        if (use.shortcut) {
+ 			if (Xr==1) {
 				if (missing(weights)) fit$fitted.values  <- matrix(apply(Y, 2, mean), nrow=nrow(Y),
 				ncol=ncol(Y), byrow=TRUE, dimnames=dimnames(Y))
-				else fit$fitted.values  <- matrix(apply(Y, 2, weighted.mean, w=weights), nrow=nrow(Y),
+				else fit$fitted.values  <- matrix(apply(Y, 2, weighted.mean, w = c(w)), nrow=nrow(Y),
 				ncol=ncol(Y), byrow=TRUE, dimnames=dimnames(Y))
 			}
 			else if (Xr==nrow(Y)) fit$fitted.values  <-  Y
- 			if (missing(weights)) fit$value <- sum(-fit$fitted.values * log(fit$fitted.values), ..., na.rm = TRUE)
- 			else fit$value <- sum(-fit$fitted.values * log(fit$fitted.values) * weights, ..., na.rm = TRUE)
+ 			if (missing(weights)) fit$value <- sum(-fit$fitted.values * log(fit$fitted.values), na.rm = TRUE)
+ 			else fit$value <- sum(-fit$fitted.values * log(fit$fitted.values) * c(w), na.rm = TRUE)
  		}
     }
     else {
@@ -154,20 +108,14 @@ function (formula, data, weights, subset, na.action, MaxNWts, maxit = 1000,
     fit$terms <- Terms
     fit$call <- call
     fit$weights <- w
-    fit$lev <- lev
     fit$deviance <- 2 * fit$value
-	if (is.matrix(Y)) {
-		fit$entropy <- fit$deviance/2/nrow(Y)
-		fit$diversity <- exp(fit$entropy)
-	}
+	fit$entropy <-  fit$deviance/2/sum(c(w))
+	fit$diversity <- exp(fit$entropy)
     fit$rank <- Xr
-    edf <- ifelse(length(lev) == 2L, 1, length(lev) - 1) * Xr
-    if (is.matrix(Y)) {
-        edf <- (ncol(Y) - 1) * Xr
-        if (length(dn <- colnames(Y)) > 0)
-            fit$lab <- dn
-        else fit$lab <- 1L:ncol(Y)
-    }
+    edf <- (ncol(Y) - 1) * Xr
+    if (length(dn <- colnames(Y)) > 0)
+        fit$lab <- dn
+    else fit$lab <- 1L:ncol(Y)
     fit$coefnames <- colnames(X)
     fit$vcoefnames <- fit$coefnames[1L:r]
     fit$na.action <- attr(m, "na.action")
@@ -175,11 +123,8 @@ function (formula, data, weights, subset, na.action, MaxNWts, maxit = 1000,
     fit$xlevels <- .getXlevels(Terms, m)
     fit$edf <- edf
     fit$AIC <- fit$deviance + 2 * edf
-    if (model)
-        fit$model <- m
+    if (model) fit$model <- m
     class(fit) <- c("mdm", "multinom", "nnet")
-    if (Hess)
-        fit$Hessian <- nnet:::multinomHess(fit, X)
     fit
 }
 

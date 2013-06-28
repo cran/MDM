@@ -1,5 +1,2 @@
-simple1D       mdm analysis of a simple data set
 spider6        mdm analysis of spider species and environmental data
 corals         mdm analysis of coral species and temporal data
-simdata        mdm analysis using simulated data on a 1D gradient
-divcomp        analyses comparing true and parameteric diversity

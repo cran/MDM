@@ -34,7 +34,7 @@ function (d, p = 10, n = 100, strip0 = TRUE, extreme = 0, ret = TRUE, k.rand = F
 		k2 <- sample(1:p, p, replace = TRUE)
 		k3 <- sample(1:p, p, replace = TRUE)
     }
-	else k1 <- k2 <- k3 <- 1:p
+	else k1 <- k2 <- k3 <- rep(1,p)
 	if (!missing(ampfun)) amp <- amp*ampfun(d)
     for (i in 1:p) {
         if (!err) {

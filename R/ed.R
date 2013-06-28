@@ -29,7 +29,7 @@ ed <- function (x, q = 1, w = 1, retq = TRUE)
             a <- exp(a)
             g <- exp(g)
         }
-        else if (q!= 0) {
+        else if (q!= 1) {
             a <- a^(1/(1 - q))
             g <- g^(1/(1 - q))
         }

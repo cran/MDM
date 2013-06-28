@@ -1,6 +1,5 @@
 \name{mdm}
 \alias{mdm}
-\alias{anova.mdm}
 \title{Fits the parameteric diversity model}
 \description{
 The parametric diversity model (mdm) is a new method for directly relating diversity to
@@ -15,9 +14,9 @@ Parametric diversities and true diversities can also be calculated for data sets
 the functions \code{\link{eds}}, \code{\link{eds1}}, \code{\link{ed}}, \code{\link{ed1}}.
 }
 \usage{
-mdm(formula, data, weights, subset, na.action, MaxNWts,
-maxit = 1000, contrasts = NULL, Hess = FALSE, summ = 0,
-censored = FALSE, model = FALSE, alpha = FALSE, ...)
+mdm(formula, data, weights, subset, na.action,
+    MaxNWts, maxit = 1000, contrasts = NULL, Hess = FALSE,
+    censored = FALSE, model = TRUE, use.shortcut = TRUE, ...)
 }
 \arguments{
   \item{formula}{
@@ -56,11 +55,6 @@ in the model formula.
   \item{Hess}{
 logical for whether the Hessian (the O/E information matrix) should be returned.
 }
-  \item{summ}{
-integer; if non-zero summarize by deleting duplicate rows and adjust weights. Methods 1 and 2
-differ in speed (2 uses C); method 3 also combines rows with the same X and different Y,
-which changes the baseline for the deviance.
-}
   \item{censored}{
 If Y is a matrix with K > 2 columns, interpret the entries as one for possible classes,
 zero for impossible classes, rather than as counts.
@@ -68,15 +62,15 @@ zero for impossible classes, rather than as counts.
   \item{model}{
 logical. If true, the model frame is saved as component model of the returned object.
 }
-  \item{alpha}{
+  \item{use.shortcut}{
 logical. If true, and the model is ~1 (a constant) or ~sites (a factor with one level for each site)
 then the model is not fitted since the fitted values are known in each case. The first (alpha) model
 has fitted values equal to the input data and the second (gamma) model fits the row means.
 Fitting the alpha-model using nnet can be prohibitively expensive in computational time and
 is unneccessary.
-The returned models when alpha == TRUE has the same components as when alpha == FALSE,
+The returned models when use.shortcut == TRUE has the same components as when use.shortcut == FALSE,
 and hence can be used in anova tables and plotting.
-Using alpha == TRUE can result in saving > 99\% of computational time for a collection of models.
+Using use.shortcut == TRUE can result in saving > 99\% of computational time for a collection of models.
 }
   \item{\dots}{
   additional arguments for nnet.
@@ -124,13 +118,6 @@ fit2 <- mdm(y2p(spider6[,1:6])~Water+Herbs,data=spider6)
 fit3 <- mdm(y2p(spider6[,1:6])~Site,data=spider6)
 anova(fit0,fit1,fit2,fit3)
 
-## speed up for fitting alpha model ##
-
-mydata <- simdata(n=100,p=20,s=0.1)
-system.time(fit <- mdm(y2p(mydata[,-1])~factor(Locations),
-data=mydata))
-system.time(fit <- mdm(y2p(mydata[,-1])~factor(Locations),
-data=mydata,alpha=FALSE))
 }
 
 \keyword{mdm}
